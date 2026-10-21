@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Морской бой чата — конструктор ссылки для OBS</title>
+<style>
+  :root {
+    --night: #06101d;
+    --deep: #0a1a2c;
+    --panel: #0d2036;
+    --panel-2: #122a45;
+    --line: #204464;
+    --ink: #eaf3ff;
+    --muted: #9db4cd;
+    --foam: #7fe3ff;
+    --mint: #9dffd8;
+    --gold: #ffd970;
+    --warn: #ffb27a;
+    --radius: 18px;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 30px 20px 56px;
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background:
+      radial-gradient(1100px 560px at 10% -12%, rgba(24, 92, 148, 0.42), transparent 70%),
+      radial-gradient(900px 520px at 100% 0%, rgba(26, 132, 122, 0.20), transparent 70%),
+      var(--night);
+  }
+
+  .page-head { max-width: 1220px; margin: 0 auto 24px; }
+  .eyebrow {
+    margin: 0 0 8px;
+    color: var(--foam);
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  h1 {
+    margin: 0 0 10px;
+    font-size: clamp(28px, 3.4vw, 42px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  h2 { margin: 0 0 14px; font-size: 19px; }
+  .lead { margin: 0; max-width: 70ch; color: var(--muted); }
+
+  .builder { max-width: 1220px; margin: 0 auto; }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+    gap: 20px;
+    align-items: start;
+  }
+  .panel {
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(18, 42, 69, 0.96), rgba(13, 32, 54, 0.96));
+    box-shadow: 0 30px 70px -50px #000;
+  }
+  .preview-panel { position: sticky; top: 20px; }
+  .share { margin-top: 20px; }
+
+  .field { margin: 0 0 20px; padding: 0; border: 0; min-width: 0; }
+  .field:last-child { margin-bottom: 0; }
+  .field legend { padding: 0; }
+  .label { display: block; margin: 0 0 8px; font-weight: 650; font-size: 15px; }
+  .label output {
+    float: right;
+    font-weight: 500;
+    color: var(--foam);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .text-input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #071523;
+    color: var(--ink);
+    font: inherit;
+  }
+  .text-input::placeholder { color: #67819c; }
+  .text-input:focus {
+    outline: none;
+    border-color: var(--foam);
+    box-shadow: 0 0 0 3px rgba(127, 227, 255, 0.18);
+  }
+
+  .hint { margin: 8px 0 0; color: var(--muted); font-size: 13.5px; }
+  .hint.is-warn { color: var(--warn); }
+  .hint.is-ok { color: var(--mint); }
+
+  .segmented { display: flex; flex-wrap: wrap; gap: 8px; }
+  .segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .segment:hover { border-color: #3d6f99; }
+  .segment input { width: 16px; height: 16px; margin: 0; accent-color: var(--foam); }
+  .segment:has(input:checked) {
+    border-color: var(--foam);
+    background: linear-gradient(135deg, rgba(127, 227, 255, 0.18), rgba(157, 255, 216, 0.12));
+  }
+  .segment:has(input:focus-visible) {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  .checks { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
+    font-size: 14.5px;
+    cursor: pointer;
+  }
+  .check:hover { border-color: #33587c; }
+  .check input { width: 17px; height: 17px; margin: 0; accent-color: var(--foam); }
+
+  input[type="range"] { width: 100%; margin: 4px 0 0; accent-color: var(--foam); }
+
+  .preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .preview-head h2 { margin: 0; }
+  .badge {
+    padding: 4px 12px;
+    border: 1px solid rgba(127, 227, 255, 0.45);
+    border-radius: 999px;
+    color: var(--foam);
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* Шахматка — фон контейнера, а не iframe: в OBS кадр прозрачный,
+     и здесь видно, где именно прозрачность. */
+  .preview-frame {
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background-color: #5c6d7d;
+    background-image:
+      linear-gradient(45deg, rgba(255, 255, 255, 0.16) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.16) 75%),
+      linear-gradient(45deg, rgba(255, 255, 255, 0.16) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.16) 75%);
+    background-size: 22px 22px;
+    background-position: 0 0, 11px 11px;
+  }
+  .preview-frame iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+  }
+  .preview-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+
+  .link-field {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #071523;
+    color: #c6e6f7;
+    font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  }
+  .link-field:focus {
+    outline: none;
+    border-color: var(--foam);
+    box-shadow: 0 0 0 3px rgba(127, 227, 255, 0.16);
+  }
+
+  .copy-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .copy-button {
+    padding: 14px 24px;
+    border: 0;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #ffe58f, #ffb84d);
+    color: #251600;
+    font: inherit;
+    font-size: 17px;
+    font-weight: 750;
+    cursor: pointer;
+    box-shadow: 0 18px 34px -18px rgba(255, 190, 80, 0.9);
+    transition: transform 0.15s, filter 0.15s;
+  }
+  .copy-button:hover { filter: brightness(1.05); transform: translateY(-1px); }
+  .copy-button:active { transform: translateY(1px); }
+  .open-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 13px 22px;
+    border: 1px solid rgba(127, 227, 255, 0.55);
+    border-radius: 15px;
+    background: rgba(127, 227, 255, 0.10);
+    color: var(--foam);
+    font-size: 16px;
+    font-weight: 650;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .open-button:hover { background: rgba(127, 227, 255, 0.18); border-color: var(--foam); }
+  .copy-status {
+    margin: 0;
+    min-height: 1.4em;
+    color: var(--mint);
+    font-size: 14.5px;
+  }
+  .copy-status.is-warn { color: var(--warn); }
+
+  .summary {
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(127, 227, 255, 0.22);
+    border-radius: 12px;
+    background: rgba(127, 227, 255, 0.06);
+    color: #cfe9f8;
+    font-size: 14px;
+  }
+
+  .steps {
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+    counter-reset: step;
+  }
+  .steps .step {
+    position: relative;
+    padding-left: 34px;
+    color: var(--muted);
+  }
+  .steps .step::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: -1px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(127, 227, 255, 0.16);
+    color: var(--foam);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .segment:focus-visible,
+  .copy-button:focus-visible,
+  .open-button:focus-visible,
+  .check:focus-within {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* Общий источник «Светлячки + Морской бой»: раздел stage.html. */
+  [hidden] { display: none !important; }
+  .stage-panel { margin-top: 20px; }
+  .check-lead { font-size: 15.5px; font-weight: 650; }
+  .stage-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 20px;
+    margin-top: 18px;
+  }
+  .stage-grid .field.is-wide { grid-column: 1 / -1; }
+  .stage-link {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+
+  @media (max-width: 940px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .preview-panel { position: static; }
+  }
+  @media (max-width: 560px) {
+    body { padding: 20px 14px 40px; }
+    .panel { padding: 16px; }
+    .copy-button { width: 100%; }
+    .stage-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <p class="eyebrow">Морской бой чата</p>
+  <h1>Соберите ссылку для OBS</h1>
+  <p class="lead">Настройте игру, посмотрите живой предпросмотр и вставьте готовую ссылку в источник «Браузер» в OBS. Ничего устанавливать не нужно: страница работает прямо в браузере, а всё остальное рисуется кодом. Хотите «Светлячков» и «Морской бой» в одном источнике? Включите раздел «Вместе со Светлячками» внизу.</p>
+</header>
+
+<main id="builder" class="builder">
+  <div class="layout">
+    <section class="panel settings" aria-labelledby="settingsTitle">
+      <h2 id="settingsTitle">Настройки</h2>
+
+      <div class="field">
+        <label class="label" for="channel">Канал Twitch</label>
+        <input class="text-input" id="channel" name="channel" type="text" autocomplete="off" spellcheck="false" placeholder="имя канала или ссылка" aria-describedby="channelHint">
+        <p class="hint" id="channelHint">Впишите имя, @имя или ссылку twitch.tv/имя — логин возьмём из неё.</p>
+      </div>
+
+      <fieldset class="field">
+        <legend class="label">Тема</legend>
+        <div class="segmented" id="themeChoices">
+          <label class="segment"><input type="radio" name="theme" value="sea" checked><span>море</span></label>
+          <label class="segment"><input type="radio" name="theme" value="none"><span>без моря</span></label>
+        </div>
+        <p class="hint">«Море» — полупрозрачная вода с волнами, «без моря» — только корабли.</p>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="seaHeight">Высота моря <output id="seaHeightValue" for="seaHeight">30 %</output></label>
+        <input type="range" id="seaHeight" name="sea_height" min="15" max="60" step="1" value="30">
+        <p class="hint">Сколько процентов кадра занимает полоса воды. Остальное — прозрачно.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="shipScale">Размер кораблей <output id="shipScaleValue" for="shipScale">1×</output></label>
+        <input type="range" id="shipScale" name="ship_scale" min="0.6" max="2" step="0.1" value="1">
+        <p class="hint">1 — обычный, 2 — крупные корабли, 0,6 — маленькие.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="maxShips">Сколько кораблей <output id="maxShipsValue" for="maxShips">30</output></label>
+        <input type="range" id="maxShips" name="max_ships" min="5" max="60" step="1" value="30">
+        <p class="hint">Сколько кораблей помещается на воде. Остальные зрители ждут в очереди.</p>
+      </div>
+
+      <fieldset class="field">
+        <legend class="label">Когда появляется корабль</legend>
+        <div class="segmented" id="joinChoices">
+          <label class="segment"><input type="radio" name="join" value="chat" checked><span>любое сообщение</span></label>
+          <label class="segment"><input type="radio" name="join" value="command"><span>только !играть</span></label>
+        </div>
+        <p class="hint">«Любое сообщение» — корабль появляется от первого сообщения зрителя.</p>
+      </fieldset>
+
+      <div class="field">
+        <label class="label" for="cooldown">Пауза команд <output id="cooldownValue" for="cooldown">6 с</output></label>
+        <input type="range" id="cooldown" name="cooldown" min="2" max="30" step="1" value="6">
+        <p class="hint">Сколько секунд зритель ждёт между своими командами.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="idleMinutes">Уплывает через <output id="idleMinutesValue" for="idleMinutes">5 мин</output></label>
+        <input type="range" id="idleMinutes" name="idle_minutes" min="1" max="180" step="1" value="5">
+        <p class="hint">Если зритель молчит, его корабль уплывает — освобождается место.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="roundPause">Пауза между раундами <output id="roundPauseValue" for="roundPause">10 с</output></label>
+        <input type="range" id="roundPause" name="round_pause" min="1" max="120" step="1" value="10">
+        <p class="hint">Через сколько секунд после победы начинается новый раунд.</p>
+      </div>
+
+      <fieldset class="field">
+        <legend class="label">Язык надписей</legend>
+        <div class="segmented" id="langChoices">
+          <label class="segment"><input type="radio" name="lang" value="ru" checked><span>русский</span></label>
+          <label class="segment"><input type="radio" name="lang" value="en"><span>английский</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="field">
+        <legend class="label">Что показывать</legend>
+        <div class="checks">
+          <label class="check"><input type="checkbox" id="leaderboard" name="leaderboard" checked><span>таблица «Лучшие капитаны»</span></label>
+          <label class="check"><input type="checkbox" id="demo" name="demo"><span>демо-боты вместо чата</span></label>
+        </div>
+        <p class="hint">В предпросмотре демо включено всегда, чтобы было видно игру. Этот переключатель добавляет demo=1 в ссылку для OBS.</p>
+      </fieldset>
+    </section>
+
+    <section class="panel preview-panel" aria-labelledby="previewTitle">
+      <div class="preview-head">
+        <h2 id="previewTitle">Живой предпросмотр</h2>
+        <span class="badge">демо</span>
+      </div>
+      <div class="preview-frame" id="previewFrame">
+        <iframe id="preview" title="Живой предпросмотр игры" src="index.html?demo=1"></iframe>
+      </div>
+      <p class="preview-note" id="previewNote">Шахматка показывает прозрачность: в OBS фон вне моря будет прозрачным. Здесь играют придуманные зрители, в OBS будут сообщения вашего чата.</p>
+    </section>
+  </div>
+
+  <section class="panel share" aria-labelledby="shareTitle">
+    <h2 id="shareTitle">Ссылка для OBS</h2>
+    <label class="label" for="obsLink">Скопируйте и вставьте в поле «URL» источника «Браузер»</label>
+    <input class="link-field" id="obsLink" type="text" readonly value="index.html" aria-describedby="copyStatus">
+    <div class="copy-row">
+      <button type="button" class="copy-button" id="copyLink">Скопировать</button>
+      <a class="open-button" id="openLink" href="index.html" target="_blank" rel="noopener">Открыть</a>
+      <p class="copy-status" id="copyStatus" role="status" aria-live="polite"></p>
+    </div>
+    <p class="summary" id="summaryText">Тема «море», море 30%, до 30 кораблей, вход: любое сообщение, русский.</p>
+    <ol class="steps" id="steps">
+      <li class="step">OBS → «Источники» → «+» → «Браузер».</li>
+      <li class="step">Вставьте ссылку в поле «URL».</li>
+      <li class="step">Ширина 1920, высота 1080 → «ОК».</li>
+    </ol>
+  </section>
+
+  <section class="panel stage-panel" aria-labelledby="stageTitle">
+    <h2 id="stageTitle">Вместе со Светлячками</h2>
+    <label class="check check-lead"><input type="checkbox" id="stageEnabled" name="one_source"><span>Один источник: Светлячки + Морской бой</span></label>
+    <p class="hint" id="stageHint">В OBS нужен ОДИН источник «Браузер»: страница сама покажет «Светлячков», а по командам боя плавно переключится на море. Без этой галочки ссылка выше — только «Морской бой».</p>
+
+    <div class="stage-body" id="stageFields" hidden>
+      <div class="stage-grid">
+        <div class="field is-wide">
+          <label class="label" for="svetUrl">Ссылка «Светлячков»</label>
+          <input class="text-input" id="svetUrl" name="svet_url" type="text" autocomplete="off" spellcheck="false" placeholder="пусто — опубликованные «Светлячки»">
+          <p class="hint">Сюда можно вставить готовую ссылку «Светлячков» целиком. Пустое поле — адрес по умолчанию.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="svetTheme">Тема «Светлячков»</label>
+          <select class="text-input" id="svetTheme" name="svet_theme">
+            <option value="">по умолчанию</option>
+            <option value="city">город</option>
+            <option value="meadow">лужайка</option>
+            <option value="space">космос</option>
+            <option value="none">без неба</option>
+          </select>
+          <p class="hint">Тема их конструктора; «по умолчанию» — оставить как есть.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="svetBackdrop">Подложка неба <output id="svetBackdropValue" for="svetBackdrop">0 %</output></label>
+          <input type="range" id="svetBackdrop" name="svet_backdrop" min="0" max="80" step="10" value="0">
+          <p class="hint">0 % — прозрачно, видно только светлячков.</p>
+        </div>
+
+        <div class="field">
+          <label class="check"><input type="checkbox" id="auto" name="auto" checked><span>включать бой по команде</span></label>
+          <p class="hint" id="autoHint">Команда боя от зрителя сама включает море. Выключите — бой будет включать только стример командой !бой.</p>
+        </div>
+
+        <div class="field">
+          <label class="label" for="battleIdle">Возврат к «Светлячкам» через <output id="battleIdleValue" for="battleIdle">3 мин</output></label>
+          <input type="range" id="battleIdle" name="battle_idle" min="1" max="120" step="1" value="3">
+          <p class="hint">Сколько минут без команд боя — и сцена сама вернёт «Светлячков».</p>
+        </div>
+      </div>
+
+      <div class="stage-link">
+        <label class="label" for="stageLink">Ссылка для OBS — один источник</label>
+        <input class="link-field" id="stageLink" type="text" readonly value="stage.html" aria-describedby="stageStatus">
+        <div class="copy-row">
+          <button type="button" class="copy-button" id="stageCopy">Скопировать</button>
+          <a class="open-button" id="stageOpen" href="stage.html" target="_blank" rel="noopener">Открыть</a>
+          <p class="copy-status" id="stageStatus" role="status" aria-live="polite"></p>
+        </div>
+        <p class="summary" id="stageSummaryText">Море, «Светлячки» и автопереключение — один источник для OBS.</p>
+        <p class="hint">Одиночная ссылка выше остаётся для случая «только бой, без Светлячков».</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<noscript><p class="hint" style="max-width:1220px;margin:0 auto;">Для конструктора нужен JavaScript — включите его в браузере.</p></noscript>
+
+<!-- Свои скрипты по порядку: настройки и конструктор. Модулей и внешних файлов здесь нет. -->
+<script src="js/config.js"></script>
+<script src="js/builder.js"></script>
+</body>
+</html>
