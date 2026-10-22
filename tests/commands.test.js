@@ -96,6 +96,63 @@ test("commands: пробелы после «!» и вокруг не мешаю�
   assert.equal(Commands.parse("! огонь Вася").arg, "Вася");
 });
 
+test("commands: знаки препинания после команды не мешают", () => {
+  const cases = [
+    // [сообщение зрителя, имя команды, аргумент] — таблица §1 ТЗ v3.
+    ["!огонь", "fire", ""],
+    ["! огонь", "fire", ""],
+    ["!вперёд,", "right", ""],
+    ["!Огонь!", "fire", ""],
+    ["!огонь!!!", "fire", ""],
+    ["!щит.", "shield", ""],
+    ["!огонь, Вася", "fire", "Вася"],
+    ["!огонь,Вася", "fire", "Вася"],
+    ["!ремонт?", "repair", ""],
+    ["!огонь Вася!", "fire", "Вася"],
+  ];
+  for (const [text, name, arg] of cases) {
+    const parsed = Commands.parse(text);
+    assert.ok(parsed, text);
+    assert.equal(parsed.name, name, text);
+    assert.equal(parsed.arg, arg, text);
+  }
+  // Склейка и команда без «!» остаются не командой (строки 19 и 21).
+  assert.equal(Commands.parse("!огоньвася"), null);
+  assert.equal(Commands.parse("огонь"), null);
+});
+
+test("commands: слово из одних знаков — не команда", () => {
+  assert.equal(Commands.parse("!!!"), null);
+  assert.equal(Commands.parse("!?"), null);
+  assert.equal(Commands.parse("!..."), null);
+  assert.equal(Commands.parse("! ,"), null);
+});
+
+test("commands: запятая после слова и знаки в конце аргумента", () => {
+  const alone = Commands.parse("!огонь,");
+  assert.ok(alone);
+  assert.equal(alone.name, "fire");
+  assert.equal(alone.arg, "");
+  assert.equal(Commands.parse("!ОГОНЬ.").name, "fire");
+  assert.equal(Commands.parse("!вперед!").name, "right");
+});
+
+test("commands: внутри ника знаки препинания не трогаем", () => {
+  assert.equal(Commands.parse("!огонь Вася.Пупкин").arg, "Вася.Пупкин");
+  assert.equal(Commands.parse("!огонь vasya_99").arg, "vasya_99");
+  assert.equal(Commands.parse("!огонь Вася!").arg, "Вася");
+  assert.equal(Commands.parse("!огонь @Вася!").arg, "Вася");
+});
+
+test("commands: буква «ё» нужна только слову «вперёд»", () => {
+  for (const word of Object.keys(Commands.ALIASES)) {
+    if (word === "вперёд") continue;
+    assert.equal(word.indexOf("ё"), -1, word);
+  }
+  assert.equal(Commands.parse("!вперёд,").name, "right");
+  assert.equal(Commands.parse("!вперед!").name, "right");
+});
+
 test("commands: исходный текст сохраняется для отладки", () => {
   const parsed = Commands.parse("!огонь Вася");
   assert.equal(parsed.raw, "!огонь Вася");

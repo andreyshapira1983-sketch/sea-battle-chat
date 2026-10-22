@@ -80,24 +80,37 @@
     return PLAYER_COMMANDS.indexOf(name) >= 0;
   }
 
+  // Знаки, которые зрители прилепляют к команде и нику: «!огонь!», «!щит.»,
+  // «!ремонт?» — команда от этого не меняется.
+  const TRAILING_PUNCT = /[,\.!?;:…]+$/;
+  // Где кончается слово команды: пробел или , ; : — эти знаки работают
+  // как пробел перед ником, «!огонь,Вася» = «!огонь Вася».
+  const WORD_END = /[\s,;:]/;
+
   /**
    * Разобрать сообщение чата.
    *
    * Возвращает { name, arg, raw } или null. Команда — только с «!»;
-   * «!огоньвася» командой не считается, а «!огонь Вася» — считается.
-   * Ведущие @ и # у аргумента снимаются: «!огонь @Вася» = «!огонь Вася».
+   * знаки .,!?;:… после слова не мешают, а , ; : сразу после него отделяют
+   * ник; «!огоньвася», слово из одних знаков — не команда; @/# снимаем.
    */
   function parse(text) {
     const raw = String(text == null ? "" : text).trim();
     if (raw.charAt(0) !== "!") return null;
     const body = raw.slice(1).trim();
     if (!body) return null;
-    const spaceAt = body.search(/\s/);
-    const word = (spaceAt < 0 ? body : body.slice(0, spaceAt)).toLowerCase();
+
+    const wordEnd = body.search(WORD_END);
+    const wordRaw = wordEnd < 0 ? body : body.slice(0, wordEnd);
+    const word = wordRaw.replace(TRAILING_PUNCT, "").toLowerCase();
+    if (!word) return null;
     if (!Object.prototype.hasOwnProperty.call(ALIASES, word)) return null;
     const name = ALIASES[word];
-    let arg = spaceAt < 0 ? "" : body.slice(spaceAt + 1).trim();
+
+    let arg = wordEnd < 0 ? "" : body.slice(wordEnd).trim();
+    arg = arg.replace(/^[,;:]+/, "").trim();
     arg = arg.replace(/^[@#]+/, "").trim();
+    arg = arg.replace(TRAILING_PUNCT, "").trim();
     return { name, arg, raw };
   }
 
